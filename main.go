@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
@@ -93,15 +94,6 @@ func confirmConfig(config Config) bool {
 }
 
 func runTerraform(config Config) {
-	cmd := exec.Command("terraform", "init")
-	cmd.Dir = "terraform"
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		fmt.Println("Error initializing Terraform:", err)
-		return
-	}
-
 	args := []string{
 		"apply",
 		"-auto-approve",
@@ -114,8 +106,8 @@ func runTerraform(config Config) {
 		fmt.Sprintf("-var=instance_name=%s", config.InstanceName),
 	}
 
-	cmd = exec.Command("terraform", args...)
-	cmd.Dir = "terraform"
+	cmd := exec.Command("terraform", args...)
+	cmd.Dir = filepath.Join("terraform", "aws", "node")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

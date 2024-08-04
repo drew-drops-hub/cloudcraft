@@ -1,0 +1,70 @@
+---
+- hosts: ec2_instances
+  become: true
+  vars:
+    git_repo: "https://github.com/shaheemMPM/cloudcraft-test-apps"
+    git_branch: "node-express"
+    node_version: "20.x"
+    app_directory: "/var/www/node-express"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Node.js dependencies
+      apt:
+        name:
+          - curl
+          - git
+        state: present
+
+    - name: Add NodeSource repository
+      shell: |
+        curl -fsSL https://deb.nodesource.com/setup_{{ node_version }} | sudo -E bash -
+
+    - name: Install Node.js and npm
+      apt:
+        name: nodejs
+        state: present
+
+    - name: Create app directory
+      file:
+        path: "{{ app_directory }}"
+        state: directory
+        mode: '0755'
+
+    - name: Clone Node.js app repository
+      git:
+        repo: "{{ git_repo }}"
+        version: "{{ git_branch }}"
+        dest: "{{ app_directory }}"
+
+    - name: Install app dependencies
+      npm:
+        path: "{{ app_directory }}"
+
+    - name: Install PM2 globally
+      npm:
+        name: pm2
+        global: yes
+
+    - name: Start the Node.js application with PM2
+      command: pm2 start {{ app_directory }}/index.js --name node-app
+      args:
+        chdir: "{{ app_directory }}"
+
+    - name: Ensure PM2 starts on boot
+      command: pm2 startup systemd
+      args:
+        creates: /etc/systemd/system/pm2-root.service
+
+    - name: Save PM2 process list
+      command: pm2 save
+      args:
+        creates: /root/.pm2/dump.pm2
+
+    - name: Open port 3000 in UFW
+      ufw:
+        rule: allow
+        port: '3000'
